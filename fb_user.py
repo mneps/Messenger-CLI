@@ -68,7 +68,7 @@ class Messenger_CLI:
 	def __get_message(self):
 		sys.stdout.write("Message text: ")
 		text = input()
-		pattern = re.compile("^-i ([0-9]+) ([^\s]+)$") #-i [number] [some_text]
+		pattern = re.compile("^-i ([0-9]+) ([^\s].*)$") #-i [number] [some_text]
 		if pattern.match(text):
 			self.iterations = int(pattern.search(text).group(1))
 			text = pattern.search(text).group(2)
