@@ -55,6 +55,7 @@ class Messenger_CLI:
 			self.friend = recipient.name
 			self.uid = recipient.uid
 
+
 	def __get_recipient(self, friend):
 		try:
 			return self.client.searchForUsers(friend)[0]
@@ -91,12 +92,17 @@ class Messenger_CLI:
 
 
 	def __send_message(self):
+		sent = False
 		try:
 			for i in range(self.iterations):
 				self.client.send(Message(text=emoji.emojize(self.message, \
 											use_aliases=True)), self.uid)
+				sent = True
 		except:
-			print("Message not sent")
+			if sent:
+				print("Not all messages sent")
+			else:
+				print("Message not sent")
 			return
 
 		if not self.locked:
