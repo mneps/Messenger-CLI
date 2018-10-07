@@ -6,6 +6,7 @@ from address_book import *
 from ask_question import *
 from getpass import getpass
 from fbchat.models import *
+from functools import reduce
 
 
 class Messenger_CLI:
@@ -23,15 +24,16 @@ class Messenger_CLI:
 	def run(self):
 		while True:
 			if not self.locked:
-				self.__get_friend()
+				self.__get_friend(True)
 			self.__get_message()
 			self.__send_message()
 			self.__reset()
 
 
-	def __get_friend(self):
-		sys.stdout.write("Friend: ")
-		friend = input()
+	def __get_friend(self, first_time, friend=None):
+		if first_time:
+			sys.stdout.write("Friend: ")
+			friend = input()
 		if friend == "quit":
 			self.client.logout()
 			exit(0)
@@ -41,6 +43,8 @@ class Messenger_CLI:
 			self.uid = self.address_book.get_uid(friend)
 		else:
 			recipient = self.__get_recipient(friend)
+			if recipient == None:
+				return
 
 			message = "Name not in address book. Do you want to send a message to " \
 					+ recipient.name +"? (Y/n) "
@@ -50,7 +54,7 @@ class Messenger_CLI:
 			if ask_question(message, fail_message, ok_response) == "Y":
 				self.address_book.add_contact(recipient)
 			else:
-				return self.__get_friend()
+				return self.__get_friend(True)
 
 			self.friend = recipient.name
 			self.uid = recipient.uid
@@ -62,17 +66,25 @@ class Messenger_CLI:
 		except:
 			sys.stdout.write("Could not find friend.  Please enter different name: ")
 			new_friend = input()
-			return self.__get_recipient(new_friend)
+			self.__get_friend(False, new_friend)
 
 
 	def __get_message(self):
 		sys.stdout.write("Message text: ")
 		text = input()
-		pattern = re.compile("^-i ([0-9]+) ([^\s].*)$") #-i [number] [some_text]
+		text = emoji.emojize(text, use_aliases=True)
+
+		pattern = re.compile("^-i ([0-9]*[1-9][0-9]*) ([^\s].*)$") #-i [positive integer] [some_text]
 		if pattern.match(text):
 			self.iterations = int(pattern.search(text).group(1))
 			text = pattern.search(text).group(2)
-		
+
+		pattern = re.compile("^-s ([^\s].*)$") #-s [some text]
+		if pattern.match(text):
+			as_list = list(pattern.search(text).group(1))
+			no_spaces = filter(lambda x: x != " ", as_list)
+			text = reduce(lambda acc,x: acc+x+" ", no_spaces, "")
+
 		if text == "":
 			print("Message cannot be empty")
 			return self.__get_message()
@@ -95,8 +107,7 @@ class Messenger_CLI:
 		sent = False
 		try:
 			for i in range(self.iterations):
-				self.client.send(Message(text=emoji.emojize(self.message, \
-											use_aliases=True)), self.uid)
+				self.client.send(Message(text=self.message), self.uid)
 				sent = True
 		except:
 			if sent:
