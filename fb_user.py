@@ -19,6 +19,8 @@ class Messenger_CLI:
 		self.uid = None
 		self.message = None
 		self.iterations = 1
+		self.send = lambda msg, uid: self.client.send(Message(text=msg), uid)
+		self.args = [None, None]
 
 
 	def run(self):
@@ -69,25 +71,54 @@ class Messenger_CLI:
 			self.__get_friend(False, new_friend)
 
 
-	def __get_message(self):
-		sys.stdout.write("Message text: ")
-		text = input()
-		text = emoji.emojize(text, use_aliases=True)
+	def __empty_check(self, text):
+		if text == "":
+			if self.locked:
+				print("Message cannot be empty")
+				self.__get_message()
+				return self.message
+			else:
+				self.__reset()
+				self.run()
 
+		return text
+
+	def __iterations(self, text):
 		pattern = re.compile("^-i ([0-9]*[1-9][0-9]*) ([^\s].*)$") #-i [positive integer] [some_text]
 		if pattern.match(text):
 			self.iterations = int(pattern.search(text).group(1))
 			text = pattern.search(text).group(2)
 
+		return text
+
+	def __oboi(self, text):
+		if text == "oboi":
+			self.send = lambda img, uid: self.client.sendLocalImage(img, thread_id=uid)
+			self.args = ['images/oboi.jpg', self.uid]
+			return True
+
+		return False
+
+	def __spaces(self, text):
 		pattern = re.compile("^-s ([^\s].*)$") #-s [some text]
 		if pattern.match(text):
 			as_list = list(pattern.search(text).group(1))
 			no_spaces = filter(lambda x: x != " ", as_list)
 			text = reduce(lambda acc,x: acc+x+" ", no_spaces, "")
 
-		if text == "":
-			print("Message cannot be empty")
-			return self.__get_message()
+		return text
+
+
+	def __get_message(self):
+		sys.stdout.write("Message text: ")
+		text = input()
+
+		text = self.__empty_check(text)
+		text = emoji.emojize(text, use_aliases=True)
+		text = self.__iterations(text)
+		text = self.__spaces(text)
+		if not self.__oboi(text):
+			self.args = [text, self.uid]
 
 		if not self.locked and text == "--lock":
 			self.locked = True
@@ -107,7 +138,7 @@ class Messenger_CLI:
 		sent = False
 		try:
 			for i in range(self.iterations):
-				self.client.send(Message(text=self.message), self.uid)
+				self.send(self.args[0], self.args[1])
 				sent = True
 		except:
 			if sent:
@@ -129,6 +160,7 @@ class Messenger_CLI:
 			self.uid = None
 		self.message = None
 		self.iterations = 1
+		self.send = lambda msg, uid: self.client.send(Message(text=msg), uid)		
 
 
 		
