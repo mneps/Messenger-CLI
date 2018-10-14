@@ -35,8 +35,7 @@ class Messenger_CLI:
 
 	def __get_friend(self, first_time, friend=None):
 		if first_time:
-			sys.stdout.write("Friend: ")
-			friend = input()
+			friend = input("Friend: ")
 		if friend == "quit":
 			self.client.logout()
 			exit(0)
@@ -67,8 +66,7 @@ class Messenger_CLI:
 		try:
 			return self.client.searchForUsers(friend)[0]
 		except:
-			sys.stdout.write("Could not find friend.  Please enter different name: ")
-			new_friend = input()
+			new_friend = input("Could not find friend.  Please enter different name: ")
 			self.__get_friend(False, new_friend)
 
 
