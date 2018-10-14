@@ -1,11 +1,21 @@
 
+import pickle
+import os
 from ask_question import *
 
 
 class Address_Book:
 
 	def __init__(self):
-		self.uids = dict()
+		abspath =  (os.path.abspath(__file__))
+		dname = os.path.dirname(os.path.dirname(abspath))
+		os.chdir(dname)
+
+		if os.path.isfile(".address_book.p"):
+			self.uids = pickle.load(open(".address_book.p", "rb"))
+		else:
+			self.uids = dict()
+			pickle.dump(self.uids, open(".address_book.p", "wb"))
 
 
 	def add_contact(self, recipient):
@@ -20,6 +30,7 @@ class Address_Book:
 			contact = ask_question(message, fail_message, ok_response)
 
 			self.uids[contact.lower()] = recipient.uid
+			pickle.dump(self.uids, open(".address_book.p", "wb"))
 			print ("Contact added")
 			recipient.name = contact
 

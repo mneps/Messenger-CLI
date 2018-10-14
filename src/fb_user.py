@@ -141,8 +141,7 @@ class Messenger_CLI:
 
 		return text
 
-
-	def __get_message(self):
+	def __get_text(self):
 		text = self.__autocomplete()
 		text = self.__empty_check(text)
 		text = emoji.emojize(text, use_aliases=True)
@@ -151,6 +150,12 @@ class Messenger_CLI:
 		text = self.__replace_word(text, "shru.gg", "¯\_(ツ)_/¯")
 		if not self.__oboi(text):
 			self.args = [text, self.uid]
+
+		return text
+
+
+	def __get_message(self):
+		text = self.__get_text()
 
 		if not self.locked and text == "--lock":
 			self.locked = True
