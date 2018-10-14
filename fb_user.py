@@ -91,6 +91,17 @@ class Messenger_CLI:
 
 		return text
 
+
+	def __spaces(self, text):
+		pattern = re.compile("^-s ([^\s].*)$") #-s [some text]
+		if pattern.match(text):
+			as_list = list(pattern.search(text).group(1))
+			no_spaces = filter(lambda x: x != " ", as_list)
+			text = reduce(lambda acc,x: acc+x+" ", no_spaces, "")
+
+		return text
+
+
 	def __oboi(self, text):
 		if text == "oboi":
 			self.send = lambda img, uid: self.client.sendLocalImage(img, thread_id=uid)
@@ -99,12 +110,21 @@ class Messenger_CLI:
 
 		return False
 
-	def __spaces(self, text):
-		pattern = re.compile("^-s ([^\s].*)$") #-s [some text]
-		if pattern.match(text):
-			as_list = list(pattern.search(text).group(1))
-			no_spaces = filter(lambda x: x != " ", as_list)
-			text = reduce(lambda acc,x: acc+x+" ", no_spaces, "")
+	def __contains_word(self, s, w):
+		if s.startswith(w + ' ') or s == w:
+			return len(w)
+		elif s.find(' ' + w + ' ') != -1:
+			return s.find(' ' + w + ' ') + len(w) + 1
+		elif s.endswith(' ' + w):
+			return s.find(' ' + w) + len(w) + 1
+		else:
+			return -1
+
+	def __replace_word(self, text, find, replace):
+		match = self.__contains_word(text, find)
+		while match != -1:
+			text = text[:match].replace(find, replace, 1) + text[match:]
+			match = self.__contains_word(text, find)
 
 		return text
 
@@ -117,6 +137,7 @@ class Messenger_CLI:
 		text = emoji.emojize(text, use_aliases=True)
 		text = self.__iterations(text)
 		text = self.__spaces(text)
+		text = self.__replace_word(text, "shru.gg", "¯\_(ツ)_/¯")
 		if not self.__oboi(text):
 			self.args = [text, self.uid]
 
