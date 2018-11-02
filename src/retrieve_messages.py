@@ -59,7 +59,7 @@ class Receive(object):
         rtn.timestamp = message.get('timestamp_precise')
         if message.get('unread') is not None:
             rtn.is_read = not message['unread']
-        rtn.reactions = {str(r['user']['id']):emoji_test.MessageReaction(r['reaction']) for r in message.get('message_reactions')}
+        rtn.reactions = {str(r['user']['id']):emoji_class.MessageReaction(r['reaction']) for r in message.get('message_reactions')}
         if message.get('blob_attachments') is not None:
             rtn.attachments = [fbchat.graphql.graphql_to_attachment(attachment) for attachment in message['blob_attachments']]
 
