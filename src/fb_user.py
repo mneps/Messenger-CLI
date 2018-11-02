@@ -205,6 +205,9 @@ class Messenger_CLI:
         dname = os.path.dirname(abspath)
         os.chdir(dname)
 
+        if not os.path.isdir("../downloads"):
+            os.system("mkdir ../downloads")
+
         for i in range(len(msg.attachments)):
             img_url = self.client.fetchImageUrl(msg.attachments[i].uid)
             filename = "{:%Y%m%d-%H%M%S}-{}".format(datetime.datetime.now(),i)
