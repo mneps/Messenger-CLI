@@ -8,7 +8,7 @@ class Receive(object):
 
     def __init__(self, fb_client):
             self.fb_client = fb_client
-            emoji_test.extend_emojis()
+            emoji_class.extend_emojis()
 
 
     def fetchThreadMessages(self, thread_id, limit):
