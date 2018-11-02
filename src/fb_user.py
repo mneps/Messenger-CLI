@@ -1,8 +1,11 @@
 
+import datetime
 import emoji
 import fbchat
-import re
+import magic
+import os
 import sys
+import urllib.request
 from address_book import *
 from ask_question import *
 from autocomplete import *
@@ -169,8 +172,10 @@ class Messenger_CLI:
 
         num_to_id = dict()
 
+        num_to_display = -1
         for i in range(len(messages)):
-            self.__print_arrows(messages[i].author, i)
+            num_to_display += 1
+            self.__print_arrows(messages[i].author, num_to_display)
             num_to_id[i] = messages[i].uid
             if messages[i].text != "" and messages[i].text != None:
                 print(messages[i].text)
@@ -182,9 +187,34 @@ class Messenger_CLI:
                 elif messages[i].sticker != None:
                     print(OKBLUE + "Sticker" + ENDC)
                 else:
-                    print(OKBLUE + "Message is not plain text" + ENDC)
+                    sys.stdout.write("\r" + "\033[K") # Clears current line
+                    print(OKBLUE + "Messenger action" + ENDC)
+                    num_to_display -= 1
+                    messages[i] = None
 
-        return messages
+        return list(filter(lambda x: x, messages))
+
+
+    def __open_attachment(self, messages, msg_num):
+        msg = messages[msg_num]
+        if msg.attachments == []:
+            print("Selected message contains no attachment")
+            return
+
+        abspath = (os.path.abspath(__file__))
+        dname = os.path.dirname(abspath)
+        os.chdir(dname)
+
+        for i in range(len(msg.attachments)):
+            img_url = self.client.fetchImageUrl(msg.attachments[i].uid)
+            filename = "{:%Y%m%d-%H%M%S}-{}".format(datetime.datetime.now(),i)
+            urllib.request.urlretrieve(img_url, "../downloads/"+filename)
+            mime = magic.Magic(mime=True)
+            ext = mime.from_file("../downloads/"+filename)
+            ext = ext.split("/")[1]
+            os.system("mv ../downloads/{} ../downloads/{}.{}"\
+                                               .format(filename, filename, ext))
+            os.system("open ../downloads/{}.{}".format(filename, ext))
 
 
     def __react(self, message_id):
@@ -219,15 +249,18 @@ class Messenger_CLI:
 
         messages = self.__display_messages(limit)
 
-        message = "React to a message by entering the message number followed by the enter key.  Press 'q' if you do not wish to react. "
+        message = "React to a message by entering the message number.  Open an attachment using the --open command, followed by a space, and the number that corresponds attachment message.  Press 'q' to return. "
         fail_message = "Please enter a valid response: "
+        extras = (limit, len(messages))
 
-        result = ask_question(message, fail_message, check_response, limit)
-        if result == "q":
-            print ("quitting")
-        else:
-            message_id = messages[int(result)].uid
-            self.__react(message_id)
+        result = ask_question(message, fail_message, check_response, extras)
+        
+        if result != "q":
+            if result[:6] == "--open":
+                self.__open_attachment(messages, int(result[7:]))
+            else:
+                message_id = messages[int(result)].uid
+                self.__react(message_id)
 
         self.run()
 

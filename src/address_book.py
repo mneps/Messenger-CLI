@@ -7,7 +7,7 @@ from ask_question import *
 class Address_Book:
 
 	def __init__(self):
-		abspath =  (os.path.abspath(__file__))
+		abspath = (os.path.abspath(__file__))
 		dname = os.path.dirname(os.path.dirname(abspath))
 		os.chdir(dname)
 
