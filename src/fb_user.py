@@ -44,12 +44,41 @@ class Messenger_CLI:
             self.__reset()
 
 
-    def __get_friend(self, first_time, friend=None):
-        if first_time:
-            friend = input("Friend: ")
-        if friend == "quit":
+    def __autocomplete_friend(self):
+        commands = ["--delete", "--quit", "--view"]
+        contacts = self.address_book.get_contacts() + commands
+
+        old_delims = readline.get_completer_delims()
+        readline.set_completer_delims(old_delims.replace('-', ''))
+
+        completer = MyCompleter(contacts, True)
+        readline.set_completer(completer.complete)
+        readline.parse_and_bind('tab: complete')
+        friend = input("Friend: ")
+
+        return friend
+
+
+    def __handle_friend_commands(self, friend):
+        if friend == "--quit":
             self.client.logout()
             exit(0)
+        if friend == "--view":
+            self.address_book.view_contacts()
+            self.run()
+
+        pattern = re.compile("--delete (.+)") #--delete [some text]
+        if pattern.match(friend):
+            contact = pattern.search(friend).group(1)
+            self.address_book.remove_contact(contact)
+            self.run()
+
+
+    def __get_friend(self, first_time, friend=None):
+        if first_time:
+            friend = self.__autocomplete_friend()
+            
+        self.__handle_friend_commands(friend)
 
         if self.address_book.contact_exists(friend):
             self.friend = friend
@@ -149,6 +178,13 @@ class Messenger_CLI:
         while match != -1:
             text = text[:match].replace(find, replace, 1) + text[match:]
             match = self.__contains_word(text, find)
+
+        return text
+
+    def __emoji(self, text):
+        if text == "!":
+            chat_emoji = self.client.fetchThreadInfo(self.uid)[self.uid].emoji
+            return chat_emoji
 
         return text
 
@@ -275,6 +311,7 @@ class Messenger_CLI:
         text = self.__iterations(text)
         text = self.__spaces(text)
         text = self.__replace_word(text, "shru.gg", "¯\_(ツ)_/¯")
+        text = self.__emoji(text)
         self.__log(text)
         if not self.__oboi(text):
             self.args = [text, self.uid]

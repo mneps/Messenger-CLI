@@ -3,3 +3,4 @@ emoji_list.py
 src/__pycache__
 .DS_Store
 downloads
+src/extend_reactions.py

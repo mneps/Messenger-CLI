@@ -40,4 +40,30 @@ class Address_Book:
 
 
 	def get_uid(self, friend):
-		return (self.uids[friend] if friend.lower() in self.uids else None)
+		return (self.uids[friend.lower()] if friend.lower() in self.uids else None)
+
+	def get_contacts(self):
+		friend_list = []
+
+		for key in self.uids:
+			friend_list.append(key)
+
+		return friend_list
+
+
+	def view_contacts(self):
+		for key in sorted(self.uids):
+			print (key.capitalize())
+
+
+	def remove_contact(self, contact):
+		if contact.lower() in self.uids:
+			del self.uids[contact.lower()]
+			pickle.dump(self.uids, open(".address_book.p", "wb"))
+			print ("Contact removed")
+		else:
+			print ("Contact not found")
+
+
+
+
