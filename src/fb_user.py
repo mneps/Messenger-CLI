@@ -2,6 +2,7 @@
 import datetime
 import emoji
 import fbchat
+import getch
 import magic
 import os
 import sys
@@ -29,8 +30,9 @@ class Messenger_CLI:
         self.uid = None
         self.message = None
         self.iterations = 1
-        self.send = lambda msg, uid: self.client.send(Message(text=msg), uid)
-        self.args = [None, None]
+        self.send = lambda msg, emoji, uid: \
+                    self.client.send(Message(text=msg, emoji_size=emoji), uid)
+        self.args = [None, None, None] #msg, emoji, uid
         self.receive = receive
 
 
@@ -124,17 +126,56 @@ class Messenger_CLI:
         return text
 
 
-    def __empty_check(self, text):
-        if text == "":
-            if self.locked:
-                print("Message cannot be empty")
-                self.__get_message()
-                return self.message
-            else:
-                self.__reset()
-                self.run()
+    def __scroll(self, intro, options):
+        index = 1
+        sys.stdout.write("\r" + "\033[K" + intro + options[index])
 
-        return text
+        key = getch.getch()
+
+        # the left and right arrow keys are composed of three characters:
+        # '\x1b', '[', and 'D' for the left key and '\x1b', '[', and 'C' for
+        # the right key
+        while ord(key) != 10: #enter
+            if ord(key) == 27: #'\x1b'
+                key = getch.getch()
+                if ord(key) == 91: #'['
+                    key = getch.getch()
+                    if ord(key) == 68: #'D' left-arrow key
+                        num_chars = len(options[index])
+                        index = (index - 1) % len(options)
+                        sys.stdout.write("\r" + "\033[K" + intro + options[index])
+                    elif ord(key) == 67: #'C' right-arrow key
+                        num_chars = len(options[index])
+                        index = (index + 1) % len(options)
+                        sys.stdout.write("\r" + "\033[K" + intro + options[index])
+                        
+            key = getch.getch()
+            continue
+        sys.stdout.write("\n")
+
+        return index
+
+    def __emoji(self, text):
+        if text != "":
+            return text
+        intro = "Select the desired emoji size or \"none\" to not send the message: "
+        index = self.__scroll(intro, ["none", "small", "medium", "large"])
+
+        if index == 1:
+            self.args[1] = EmojiSize.SMALL
+        elif index == 2:
+            self.args[1] = EmojiSize.MEDIUM
+        elif index == 3:
+            self.args[1] = EmojiSize.LARGE
+        else:
+            self.__reset
+            self.run()
+
+        chat_emoji = self.client.fetchThreadInfo(self.uid)[self.uid].emoji
+        if chat_emoji:
+            return chat_emoji
+        else:
+            return ""
 
     def __iterations(self, text):
         pattern = re.compile("^-i ([0-9]*[1-9][0-9]*) ([^\s].*)$") #-i [positive integer] [some_text]
@@ -158,10 +199,8 @@ class Messenger_CLI:
     def __oboi(self, text):
         if text == "oboi":
             self.send = lambda img, uid: self.client.sendLocalImage(img, thread_id=uid)
-            self.args = ['images/oboi.jpg', self.uid]
-            return True
+            self.args = ['images/oboi.jpg', None, self.uid]
 
-        return False
 
     def __contains_word(self, s, w):
         if s.startswith(w + ' ') or s == w:
@@ -181,12 +220,10 @@ class Messenger_CLI:
 
         return text
 
-    def __emoji(self, text):
-        if text == "!":
-            chat_emoji = self.client.fetchThreadInfo(self.uid)[self.uid].emoji
-            return chat_emoji
-
-        return text
+    def __quit(self, text):
+        if text == "--quit":
+            self.__reset()
+            self.run()
 
 
     def __print_arrows(self, author, i):
@@ -258,19 +295,17 @@ class Messenger_CLI:
 
     def __react(self, message_id):
         chat_emoji = self.client.fetchThreadInfo(self.uid)[self.uid].emoji
-        reacts = ['😍', '😆', '😮', '😢', '😠', '👍', '👎']
+        reacts = ["none", '😍', '😆', '😮', '😢', '😠', '👍', '👎']
         if chat_emoji != None and chat_emoji not in reacts:
-            toAppend = "[7] " + chat_emoji + "\n"
-            limit = 8
             reacts += [chat_emoji]
-        else:
-            toAppend = ""
-            limit = 7
 
-        message = "React to a message by entering the number that corresponds to the desired reaction.\n[0] 😍\n[1] 😆\n[2] 😮\n[3] 😢\n[4] 😠\n[5] 👍\n[6] 👎\n" + toAppend
-        fail_message = "Please enter a valid response: "
-        reaction = ask_question(message, fail_message, check_reaction, limit)
-        reaction = reacts[int(reaction)]
+        intro = "Select the emoji with which you would like to react or \"none\" to not react at all: "
+        index = self.__scroll(intro, reacts)
+        if index == 0:
+            self.__reset()
+            self.run()
+        reaction = reacts[index]
+        
         try:
             self.client.reactToMessage(message_id, reactEmoji(reaction))
             print("Reaction successful")
@@ -306,16 +341,16 @@ class Messenger_CLI:
 
     def __get_text(self):
         text = self.__autocomplete()
-        text = self.__empty_check(text)
+        self.__quit(text)
         text = emoji.emojize(text, use_aliases=True)
         text = self.__iterations(text)
         text = self.__spaces(text)
         text = self.__replace_word(text, "shru.gg", "¯\_(ツ)_/¯")
-        text = self.__emoji(text)
         self.__log(text)
-        if not self.__oboi(text):
-            self.args = [text, self.uid]
-
+        text = self.__emoji(text)
+        self.args = [text, self.args[1], self.uid]
+        self.__oboi(text)
+        
         return text
 
 
@@ -339,8 +374,8 @@ class Messenger_CLI:
     def __send_message(self):
         sent = False
         try:
-            for i in range(self.iterations):
-                self.send(self.args[0], self.args[1])
+            for _ in range(self.iterations):
+                self.send(self.args[0], self.args[1], self.args[2])
                 sent = True
         except:
             print("Not all messages sent" if sent else "Message not sent")
@@ -355,7 +390,10 @@ class Messenger_CLI:
             self.uid = None
         self.message = None
         self.iterations = 1
-        self.send = lambda msg, uid: self.client.send(Message(text=msg), uid)       
+        self.send = \
+            lambda msg, emoji, uid: \
+                    self.client.send(Message(text=msg, emoji_size=emoji), uid)
+        self.args[1] = None
 
 
         
